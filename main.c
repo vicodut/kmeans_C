@@ -10,7 +10,7 @@
 //#####################################
 //### K ==> NOMBRE DE NOYEAUX
 //#####################################
-#define K 10
+#define K 4
 
 
 //#####################################
@@ -65,6 +65,14 @@ typedef struct
 	unsigned int totalX;
 	unsigned int totalY;
 	unsigned int nbPixels;
+
+	unsigned char b;
+	unsigned char g;
+	unsigned char r;
+	unsigned char totalR;
+	unsigned char totalG;
+	unsigned char totalB;
+
 } clusters;
 
 
@@ -77,6 +85,7 @@ void iterate(clusters cluster[K], color **tab, int width, int height);
 int findNearestCluster(clusters cluster[K], color **tab, int x, int y);
 int dist(int xa, int xb, int ya, int yb);
 void drawCluster(clusters cluster[K], color **tab, int width, int height);
+int rgbDiff(clusters cluster, color tab);
 
 
 //#####################################
@@ -150,13 +159,16 @@ void kmeans(color **tab, int width, int height)
 	{
 		cluster[i].x = rand()%width;
 		cluster[i].y = rand()%height;
+		cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
+		cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
+		cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
 		cluster[i].nbPixels = 1;
 	}
 
 	//----------------------------------
 	// - Itération x 20
 	//----------------------------------
-	for (i = 0; i < 20; ++i)
+	for (i = 0; i < 10; ++i)
 	{
 		iterate(cluster, tab, width, height);
 	}
@@ -214,7 +226,12 @@ int findNearestCluster(clusters cluster[K], color **tab, int x, int y)
 
 	for (i = 1; i < K; ++i)
 	{
-		if (dist(cluster[i].x, cluster[i].y, x, y) < dist(cluster[j].x, cluster[j].y, x, y))
+		// if (dist(cluster[i].x, cluster[i].y, x, y) < dist(cluster[j].x, cluster[j].y, x, y))
+		// {
+		// 	j = i;
+		// }
+
+		if (rgbDiff(cluster[i], tab[x][y]) < rgbDiff(cluster[j], tab[x][y]) )
 		{
 			j = i;
 		}
@@ -236,6 +253,16 @@ int dist(int xa, int ya, int xb, int yb)
 }
 
 
+int rgbDiff(clusters cluster, color tab)
+{
+	int r = cluster.r - tab.r;
+	int g = cluster.g - tab.g;
+	int b = cluster.b - tab.b;
+
+	return sqrt(pow(r,2) + pow(g,2) + pow(b,2));
+}
+
+
 void drawCluster(clusters cluster[K], color **tab, int width, int height)
 {
 	int i = 0, j = 0, index = 0;
@@ -246,9 +273,9 @@ void drawCluster(clusters cluster[K], color **tab, int width, int height)
 		{
 			index = findNearestCluster(cluster, tab, i, j);
 			
-			tab[i][j].r = tab[cluster[index].x][cluster[index].y].r;
-			tab[i][j].b = tab[cluster[index].x][cluster[index].y].b;
-			tab[i][j].g = tab[cluster[index].x][cluster[index].y].g;
+			tab[i][j].r = cluster[index].r;
+			tab[i][j].b = cluster[index].b;
+			tab[i][j].g = cluster[index].g;
 		}
 	}
 }
