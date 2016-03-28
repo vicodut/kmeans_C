@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 
 
 #pragma pack(1)
@@ -10,7 +11,7 @@
 //#####################################
 //### K ==> NOMBRE DE NOYEAUX
 //#####################################
-#define K 4
+#define K 7
 
 
 //#####################################
@@ -80,12 +81,13 @@ typedef struct
 //#####################################
 //### INITIALISATION DES FONCTIONS
 //#####################################
-void kmeans(color **tab, int width, int height);
+void kmeans(color **tab, int width, int height, struct headerFile header);
 void iterate(clusters cluster[K], color **tab, int width, int height);
 int findNearestCluster(clusters cluster[K], color **tab, int x, int y);
 int dist(int xa, int xb, int ya, int yb);
 void drawCluster(clusters cluster[K], color **tab, int width, int height);
 int rgbDiff(clusters cluster, color tab);
+void create(struct headerFile header, color **tabColor, int nb);
 
 
 //#####################################
@@ -97,12 +99,10 @@ int main(int argc, char const *argv[])
 //### DECLARATION DES VARIABLES
 //#####################################
 	FILE *fichier = NULL;
-	FILE *fichierOut = NULL;
 	int i = 0, j = 0;
 	color **tabColor = NULL;
 
 	fichier = fopen("lenaColor.bmp", "rb");
-	fichierOut = fopen("lenaOut.bmp", "wb");
 
 	struct headerFile header;
 
@@ -123,27 +123,17 @@ int main(int argc, char const *argv[])
 		}
 	}
 
-	kmeans(tabColor, header.img.width, header.img.height);
+	kmeans(tabColor, header.img.width, header.img.height, header);
 
-	fwrite(&header, sizeof(header), 1, fichierOut);
-
-	for (i = header.img.height - 1; i >= 0; --i)
-	{
-		for (j = 0; j < header.img.width; ++j)
-		{
-			fwrite(&tabColor[i][j], sizeof( tabColor[i][j] ), 1, fichierOut);
-		}
-	}
-
-
+	create(header, tabColor, 0);
 	fclose(fichier);
-	fclose(fichierOut);
+	
 	return 0;
 
 }
 
 
-void kmeans(color **tab, int width, int height)
+void kmeans(color **tab, int width, int height, struct headerFile header)
 {
 //#####################################
 //### DECLARATION DES VARIABLES
@@ -179,6 +169,16 @@ void kmeans(color **tab, int width, int height)
 	// - On desinne les clusters
 	//----------------------------------
 	drawCluster(cluster, tab, width, height);
+
+	//----------------------------------
+	// - On affiche les données sur les diff cluster
+	//----------------------------------
+	for (i = 0; i < K; ++i)
+	{
+		printf("- Cluster n°%d -\n", i + 1);
+		printf("Couleur: rgb(%d, %d, %d)\n", cluster[i].r, cluster[i].g, cluster[i].b);
+		printf("Nombre de pixels: %d\n\n", cluster[i].nbPixels);
+	}
 }
 
 
@@ -282,6 +282,30 @@ void drawCluster(clusters cluster[K], color **tab, int width, int height)
 			tab[i][j].r = cluster[index].r;
 			tab[i][j].b = cluster[index].b;
 			tab[i][j].g = cluster[index].g;
+			cluster[index].nbPixels++;
 		}
 	}
+}
+
+void create(struct headerFile header, color **tabColor, int nb)
+{
+	int i = 0, j = 0;
+	FILE *fichierOut = NULL;
+
+	char filename[20];
+	//strcpy(filename, nb);
+	sprintf(filename, "%s%d%s","Out/", nb, "-lenaOut.bmp");
+	fichierOut = fopen(filename, "wb");
+
+	fwrite(&header, sizeof(header), 1, fichierOut);
+
+	for (i = header.img.height - 1; i >= 0; --i)
+	{
+		for (j = 0; j < header.img.width; ++j)
+		{
+			fwrite(&tabColor[i][j], sizeof( tabColor[i][j] ), 1, fichierOut);
+		}
+	}
+
+	fclose(fichierOut);
 }
