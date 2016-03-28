@@ -159,6 +159,8 @@ void kmeans(color **tab, int width, int height)
 	{
 		cluster[i].x = rand()%width;
 		cluster[i].y = rand()%height;
+		cluster[i].totalX = cluster[i].x;
+		cluster[i].totalY = cluster[i].y;
 		cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
 		cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
 		cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
@@ -168,7 +170,7 @@ void kmeans(color **tab, int width, int height)
 	//----------------------------------
 	// - Itération x 20
 	//----------------------------------
-	for (i = 0; i < 10; ++i)
+	for (i = 0; i < 20; ++i)
 	{
 		iterate(cluster, tab, width, height);
 	}
@@ -212,6 +214,10 @@ void iterate(clusters cluster[K], color **tab, int width, int height)
 		cluster[i].nbPixels = 1;
 		cluster[i].totalY = 0;
 		cluster[i].totalX = 0;
+
+		cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
+		cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
+		cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
 	}
 
 }
