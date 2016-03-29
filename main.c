@@ -11,7 +11,7 @@
 //#####################################
 //### K ==> NOMBRE DE NOYEAUX
 //#####################################
-#define K 7
+#define K 4
 
 
 //#####################################
@@ -88,6 +88,7 @@ int dist(int xa, int xb, int ya, int yb);
 void drawCluster(clusters cluster[K], color **tab, int width, int height);
 int rgbDiff(clusters cluster, color tab);
 void create(struct headerFile header, color **tabColor, int nb);
+void drawTest(clusters cluster[K], color **tab, int width, int height, struct headerFile header, int increment);
 
 
 //#####################################
@@ -138,7 +139,7 @@ void kmeans(color **tab, int width, int height, struct headerFile header)
 //#####################################
 //### DECLARATION DES VARIABLES
 //#####################################
-	int i = 0, j = 0, z = 0;
+	int i = 0, j = 0, x = 0, y = 0;
 	clusters cluster[ K ];
 
 	//----------------------------------
@@ -154,6 +155,9 @@ void kmeans(color **tab, int width, int height, struct headerFile header)
 		cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
 		cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
 		cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
+		cluster[i].totalB = cluster[i].b;
+		cluster[i].totalG = cluster[i].g;
+		cluster[i].totalR = cluster[i].r;
 		cluster[i].nbPixels = 1;
 	}
 
@@ -163,6 +167,8 @@ void kmeans(color **tab, int width, int height, struct headerFile header)
 	for (i = 0; i < 20; ++i)
 	{
 		iterate(cluster, tab, width, height);
+
+		drawTest(cluster, tab, width, height, header, i+1);
 	}
 
 	//----------------------------------
@@ -201,6 +207,9 @@ void iterate(clusters cluster[K], color **tab, int width, int height)
 			cluster[index].nbPixels++;
 			cluster[index].totalX += i;
 			cluster[index].totalY += j;
+			cluster[index].totalB += tab[i][j].b;
+			cluster[index].totalG += tab[i][j].g;
+			cluster[index].totalR += tab[i][j].r;
 		}
 	}
 
@@ -215,9 +224,16 @@ void iterate(clusters cluster[K], color **tab, int width, int height)
 		cluster[i].totalY = 0;
 		cluster[i].totalX = 0;
 
-		cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
-		cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
-		cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
+		// cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
+		// cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
+		// cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
+		cluster[i].b = cluster[i].totalB / cluster[i].nbPixels;
+		cluster[i].g = cluster[i].totalG / cluster[i].nbPixels;
+		cluster[i].r = cluster[i].totalR / cluster[i].nbPixels;
+
+		cluster[i].totalB = cluster[i].b;
+		cluster[i].totalG = cluster[i].g;
+		cluster[i].totalR = cluster[i].r;
 	}
 
 }
@@ -293,7 +309,7 @@ void create(struct headerFile header, color **tabColor, int nb)
 	FILE *fichierOut = NULL;
 
 	char filename[20];
-	//strcpy(filename, nb);
+
 	sprintf(filename, "%s%d%s","Out/", nb, "-lenaOut.bmp");
 	fichierOut = fopen(filename, "wb");
 
@@ -308,4 +324,29 @@ void create(struct headerFile header, color **tabColor, int nb)
 	}
 
 	fclose(fichierOut);
+}
+
+void drawTest(clusters cluster[K], color **tab, int width, int height, struct headerFile header, int increment)
+{
+	color **tabCopie;
+	int i = 0, j = 0;
+
+	tabCopie = ( color ** ) malloc( width * ( sizeof(color*) ));
+
+	for (i = 0; i < height; ++i)
+	{
+		tabCopie[i] = ( color * ) malloc( width * ( sizeof(color) ));
+	}
+
+	for (i = 0; i < height; ++i)
+	{
+		for (j = 0; j < width; ++j)
+		{
+			tabCopie[i][j].r = tab[i][j].r;
+			tabCopie[i][j].g = tab[i][j].g;
+			tabCopie[i][j].b = tab[i][j].b;
+		}
+	}
+	drawCluster(cluster, tabCopie, width, height);
+	create(header, tabCopie, increment);
 }
