@@ -6,14 +6,15 @@
 #include <string.h>
 
 
-#pragma pack(1)
-
 //#####################################
 //### K ==> NOMBRE DE NOYEAUX
+//### N ==> NOMBRE D'ITERATION
 //#####################################
-#define K 4
+#define K 7
+#define N 1
 
 
+#pragma pack(1)
 //#####################################
 //### STRUCTURE DE L ENTETE DE L IMAGE
 //#####################################
@@ -31,7 +32,6 @@ struct headerImg
 	int nbColor;
 	int nbColorImp;
 };
-
 
 
 //#####################################
@@ -55,6 +55,7 @@ typedef struct
 
 } color;
 
+
 //#####################################
 //### STRUCTURE CLUSTERS
 //#####################################
@@ -70,12 +71,11 @@ typedef struct
 	unsigned char b;
 	unsigned char g;
 	unsigned char r;
-	unsigned char totalR;
-	unsigned char totalG;
-	unsigned char totalB;
+	unsigned int totalR;
+	unsigned int totalG;
+	unsigned int totalB;
 
 } clusters;
-
 
 
 //#####################################
@@ -96,9 +96,9 @@ void drawTest(clusters cluster[K], color **tab, int width, int height, struct he
 //#####################################
 int main(int argc, char const *argv[])
 {
-//#####################################
-//### DECLARATION DES VARIABLES
-//#####################################
+	//#####################################
+	//### DECLARATION DES VARIABLES
+	//#####################################
 	FILE *fichier = NULL;
 	int i = 0, j = 0;
 	color **tabColor = NULL;
@@ -107,10 +107,13 @@ int main(int argc, char const *argv[])
 
 	struct headerFile header;
 
+
+	//#####################################
+	//### CREATION DU TABLEAU & LECTURE DU FICHIER
+	//#####################################
 	fread(&header, sizeof(header), 1, fichier);
 
 	tabColor = ( color ** ) malloc( header.img.width * ( sizeof(color*) ));
-
 	for (i = 0; i < header.img.height; ++i)
 	{
 		tabColor[i] = ( color * ) malloc( header.img.width * ( sizeof(color) ));
@@ -124,6 +127,10 @@ int main(int argc, char const *argv[])
 		}
 	}
 
+
+	//#####################################
+	//### LANCEMENT DE LA METHODE KMEANS & FERMETURE
+	//#####################################
 	kmeans(tabColor, header.img.width, header.img.height, header);
 
 	create(header, tabColor, 0);
@@ -136,11 +143,12 @@ int main(int argc, char const *argv[])
 
 void kmeans(color **tab, int width, int height, struct headerFile header)
 {
-//#####################################
-//### DECLARATION DES VARIABLES
-//#####################################
+	//#####################################
+	//### DECLARATION DES VARIABLES
+	//#####################################
 	int i = 0, j = 0, x = 0, y = 0;
 	clusters cluster[ K ];
+
 
 	//----------------------------------
 	// - Definition des noyeaux
@@ -148,33 +156,52 @@ void kmeans(color **tab, int width, int height, struct headerFile header)
 	srand(time(NULL));
 	for (i = 0; i < K; ++i)
 	{
+		// On selectionne un pixel au hazard
 		cluster[i].x = rand()%width;
 		cluster[i].y = rand()%height;
+
+		// On "ajoute" au total le 1er pixel
 		cluster[i].totalX = cluster[i].x;
 		cluster[i].totalY = cluster[i].y;
+
+		// On récupère les couleurs de ce pixel
 		cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
 		cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
 		cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
+
+		// On "ajoute" au total des couleurs les couleurs du pixel
 		cluster[i].totalB = cluster[i].b;
 		cluster[i].totalG = cluster[i].g;
 		cluster[i].totalR = cluster[i].r;
+
+		// On établi le nombre de pixel
 		cluster[i].nbPixels = 1;
 	}
 
+
 	//----------------------------------
-	// - Itération x 20
+	// - Itération x N (voir var globales)
 	//----------------------------------
-	for (i = 0; i < 20; ++i)
+	for (i = 0; i < N; ++i)
 	{
 		iterate(cluster, tab, width, height);
 
-		drawTest(cluster, tab, width, height, header, i+1);
+		// drawTest ::> fonction qui colorie une image "copie" et qui l'enregistre
+		//drawTest(cluster, tab, width, height, header, i+1);
 	}
+
 
 	//----------------------------------
 	// - On desinne les clusters
 	//----------------------------------
 	drawCluster(cluster, tab, width, height);
+
+	//----------------------------------
+	// - Paramètres d'entrée
+	//----------------------------------
+	printf("- Paramètre d'entree: - \n");
+	printf("Nombre de noyeaux: %d \n"
+		"Nombre d'itération: %d\n\n", K, N);
 
 	//----------------------------------
 	// - On affiche les données sur les diff cluster
@@ -190,10 +217,11 @@ void kmeans(color **tab, int width, int height, struct headerFile header)
 
 void iterate(clusters cluster[K], color **tab, int width, int height)
 {
-//#####################################
-//### DECLARATION DES VARIABLES
-//#####################################
+	//#####################################
+	//### DECLARATION DES VARIABLES
+	//#####################################
 	int i = 0, j = 0, index = 0;
+
 
 	//---------------------------------- 
 	// - Affectation des pixels a un cluster
@@ -202,38 +230,51 @@ void iterate(clusters cluster[K], color **tab, int width, int height)
 	{
 		for (j = 0; j < height; ++j)
 		{
+			// findNearestCluster ::> Rếcupère le cluster le plus proche
 			index = findNearestCluster(cluster, tab, i, j);
 			
+			// On incrémente le nb de pixel du cluster
 			cluster[index].nbPixels++;
+
+			// On ajoute les coordonées du nouveau pixels aux coord totales
 			cluster[index].totalX += i;
 			cluster[index].totalY += j;
+
+			// On ajoute les couleurs du nv pixel aux couleurs totales
 			cluster[index].totalB += tab[i][j].b;
 			cluster[index].totalG += tab[i][j].g;
 			cluster[index].totalR += tab[i][j].r;
 		}
 	}
 
+
 	//---------------------------------- 
 	// - Re-evaluation des noyeaux
 	//---------------------------------- 
 	for (i = 0; i < K; ++i)
 	{
+		// On rècupere les nouvelles coordonées (inutiles si on gere par couleur)
 		cluster[i].x = cluster[i].totalX / cluster[i].nbPixels;
 		cluster[i].y = cluster[i].totalY / cluster[i].nbPixels;
-		cluster[i].nbPixels = 1;
-		cluster[i].totalY = 0;
-		cluster[i].totalX = 0;
 
-		// cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
-		// cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
-		// cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
+		// On rèupère la nouvelle couleur ==> moyenne des couleures totales
 		cluster[i].b = cluster[i].totalB / cluster[i].nbPixels;
 		cluster[i].g = cluster[i].totalG / cluster[i].nbPixels;
 		cluster[i].r = cluster[i].totalR / cluster[i].nbPixels;
 
+		// On réinitialise le cluster
+		cluster[i].nbPixels = 1;
+		cluster[i].totalY = cluster[i].y;
+		cluster[i].totalX = cluster[i].x;
+
 		cluster[i].totalB = cluster[i].b;
 		cluster[i].totalG = cluster[i].g;
 		cluster[i].totalR = cluster[i].r;
+
+		// On récupère les couleurs du nouveau noyeau (inutile si on gere par couleur)
+		// cluster[i].b = tab[cluster[i].x][cluster[i].y].b;
+		// cluster[i].g = tab[cluster[i].x][cluster[i].y].g;
+		// cluster[i].r = tab[cluster[i].x][cluster[i].y].r;
 	}
 
 }
@@ -248,11 +289,13 @@ int findNearestCluster(clusters cluster[K], color **tab, int x, int y)
 
 	for (i = 1; i < K; ++i)
 	{
+		// Si on gere par distance par rappor au noyeau (diagramme de Voronoi)
 		// if (dist(cluster[i].x, cluster[i].y, x, y) < dist(cluster[j].x, cluster[j].y, x, y))
 		// {
 		// 	j = i;
 		// }
 
+		// Si on gere par couleur ==> rgbDiff ::> Différence entre 2 couleurs
 		if (rgbDiff(cluster[i], tab[x][y]) < rgbDiff(cluster[j], tab[x][y]) )
 		{
 			j = i;
@@ -264,10 +307,10 @@ int findNearestCluster(clusters cluster[K], color **tab, int x, int y)
 
 int dist(int xa, int ya, int xb, int yb)
 {
-//#####################################
-//### FORMULE DISTANCE ENTRE 2 POINTS:
-//### AB = racine((xB - xA)**2 + (yB - yA)**2)
-//#####################################
+	//#####################################
+	//### FORMULE DISTANCE ENTRE 2 POINTS:
+	//### AB = racine((xB - xA)**2 + (yB - yA)**2)
+	//#####################################
 	int x = xb - xa;
 	int y = yb - ya;
 
@@ -277,6 +320,10 @@ int dist(int xa, int ya, int xb, int yb)
 
 int rgbDiff(clusters cluster, color tab)
 {
+	//#####################################
+	//### RECUPERE LES DONNEES DE COULEUR
+	//### RENVOIE LA DIFFERENCE
+	//#####################################
 	int r = cluster.r - tab.r;
 	int g = cluster.g - tab.g;
 	int b = cluster.b - tab.b;
@@ -287,17 +334,26 @@ int rgbDiff(clusters cluster, color tab)
 
 void drawCluster(clusters cluster[K], color **tab, int width, int height)
 {
+	//#####################################
+	//### DECLARATION DES VARIABLES
+	//#####################################
 	int i = 0, j = 0, index = 0;
 
+
+	//---------------------------------- 
+	// - On dessine les cluster sur l'image
+	//---------------------------------- 
 	for (i = 0; i < width; ++i)
 	{
 		for (j = 0; j < height; ++j)
 		{
+			// On recuperer le cluster le plus proche
 			index = findNearestCluster(cluster, tab, i, j);
 			
 			tab[i][j].r = cluster[index].r;
 			tab[i][j].b = cluster[index].b;
 			tab[i][j].g = cluster[index].g;
+
 			cluster[index].nbPixels++;
 		}
 	}
@@ -305,14 +361,22 @@ void drawCluster(clusters cluster[K], color **tab, int width, int height)
 
 void create(struct headerFile header, color **tabColor, int nb)
 {
+	//#####################################
+	//### DECLARATION DES VARIABLES
+	//#####################################
 	int i = 0, j = 0;
+	
+	// Préparation du fichier de sortie
 	FILE *fichierOut = NULL;
-
 	char filename[20];
-
+	// On nomme le fichier
 	sprintf(filename, "%s%d%s","Out/", nb, "-lenaOut.bmp");
 	fichierOut = fopen(filename, "wb");
 
+
+	//---------------------------------- 
+	// - On ecrit le fichier
+	//---------------------------------- 
 	fwrite(&header, sizeof(header), 1, fichierOut);
 
 	for (i = header.img.height - 1; i >= 0; --i)
@@ -326,11 +390,19 @@ void create(struct headerFile header, color **tabColor, int nb)
 	fclose(fichierOut);
 }
 
+
 void drawTest(clusters cluster[K], color **tab, int width, int height, struct headerFile header, int increment)
 {
+	//#####################################
+	//### DECLARATION DES VARIABLES
+	//#####################################
 	color **tabCopie;
 	int i = 0, j = 0;
 
+
+	//---------------------------------- 
+	// - Creation du tableau
+	//---------------------------------- 
 	tabCopie = ( color ** ) malloc( width * ( sizeof(color*) ));
 
 	for (i = 0; i < height; ++i)
@@ -338,6 +410,10 @@ void drawTest(clusters cluster[K], color **tab, int width, int height, struct he
 		tabCopie[i] = ( color * ) malloc( width * ( sizeof(color) ));
 	}
 
+
+	//---------------------------------- 
+	// - On copie le tableau
+	//---------------------------------- 
 	for (i = 0; i < height; ++i)
 	{
 		for (j = 0; j < width; ++j)
@@ -347,6 +423,11 @@ void drawTest(clusters cluster[K], color **tab, int width, int height, struct he
 			tabCopie[i][j].b = tab[i][j].b;
 		}
 	}
+
+
+	//---------------------------------- 
+	// - On dessine les clusters et on écrit le nouveau tableau dans un fichier
+	//---------------------------------- 
 	drawCluster(cluster, tabCopie, width, height);
 	create(header, tabCopie, increment);
 }
